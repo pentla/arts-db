@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 
 use crate::buffer::{Buffer, BufferId, BufferPool, Error, Frame};
-use crate::disk::{DiskManager, PageId};
+use crate::disk::{DiskManager, PageId, PAGE_SIZE};
 
 /*
     Diskは遅いので、直接扱わず、メモリで結果を返すようにするための仕組み。
@@ -31,7 +31,7 @@ impl BufferPoolManager {
         if let Some(&buffer_id) = self.page_table.get(&page_id) {
             let frame = &mut self.pool[buffer_id];
             frame.usage_count += 1;
-            return Ok(frame.buffer.clone());
+            return Ok(Rc::clone(&frame.buffer));
         }
 
         // これから読み込むページを格納するbufferを決定する
@@ -43,7 +43,8 @@ impl BufferPoolManager {
             // is_dirtyはバッファの内容が変更されていて、disk上の内容が古くなっていることを示す
             let buffer = Rc::get_mut(&mut frame.buffer).unwrap();
             if buffer.is_dirty.get() {
-                self.disk.write_page_data(page_id, buffer.page.get_mut())?;
+                self.disk
+                    .write_page_data(evict_page_id, buffer.page.get_mut())?;
             }
             buffer.page_id = page_id;
             buffer.is_dirty.set(false);
@@ -104,5 +105,55 @@ impl Index<BufferId> for BufferPool {
 impl IndexMut<BufferId> for BufferPool {
     fn index_mut(&mut self, index: BufferId) -> &mut Self::Output {
         &mut self.buffers[index.0]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempfile;
+
+    #[test]
+    fn test() {
+        let mut hello = Vec::with_capacity(PAGE_SIZE);
+        hello.extend_from_slice(b"hello");
+        hello.resize(PAGE_SIZE, 0);
+        let mut world = Vec::with_capacity(PAGE_SIZE);
+        world.extend_from_slice(b"world");
+        world.resize(PAGE_SIZE, 0);
+
+        let disk = DiskManager::new(tempfile().unwrap()).unwrap();
+        let pool = BufferPool::new(1);
+        let mut bufmgr = BufferPoolManager::new(disk, pool);
+        let page1_id = {
+            let buffer = bufmgr.create_page().unwrap();
+            assert!(bufmgr.create_page().is_err());
+            let mut page = buffer.page.borrow_mut();
+            page.copy_from_slice(&hello);
+            buffer.is_dirty.set(true);
+            buffer.page_id
+        };
+        {
+            let buffer = bufmgr.fetch_page(page1_id).unwrap();
+            let page = buffer.page.borrow();
+            assert_eq!(&hello, page.as_ref());
+        }
+        let page2_id = {
+            let buffer = bufmgr.create_page().unwrap();
+            let mut page = buffer.page.borrow_mut();
+            page.copy_from_slice(&world);
+            buffer.is_dirty.set(true);
+            buffer.page_id
+        };
+        {
+            let buffer = bufmgr.fetch_page(page1_id).unwrap();
+            let page = buffer.page.borrow();
+            assert_eq!(&hello, page.as_ref());
+        }
+        {
+            let buffer = bufmgr.fetch_page(page2_id).unwrap();
+            let page = buffer.page.borrow();
+            assert_eq!(&world, page.as_ref());
+        }
     }
 }
