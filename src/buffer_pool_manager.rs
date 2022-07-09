@@ -5,9 +5,14 @@ use std::rc::Rc;
 use crate::buffer::{Buffer, BufferId, BufferPool, Error, Frame};
 use crate::disk::{DiskManager, PageId};
 
+/*
+    Diskは遅いので、直接扱わず、メモリで結果を返すようにするための仕組み。
+*/
 pub struct BufferPoolManager {
     disk: DiskManager,
+    // メモリ上に管理するバッファプール
     pool: BufferPool,
+    // どのページのデータがどのバッファに入っているかの対応関係を管理する
     page_table: HashMap<PageId, BufferId>,
 }
 
@@ -75,6 +80,17 @@ impl BufferPoolManager {
         self.page_table.remove(&evict_page_id);
         self.page_table.insert(page_id, buffer_id);
         Ok(page)
+    }
+
+    pub fn flush(&mut self) -> Result<(), Error> {
+        for (&page_id, &buffer_id) in self.page_table.iter() {
+            let frame = &self.pool[buffer_id];
+            let mut page = frame.buffer.page.borrow_mut();
+            self.disk.write_page_data(page_id, page.as_mut())?;
+            frame.buffer.is_dirty.set(false);
+        }
+        self.disk.sync()?;
+        Ok(())
     }
 }
 

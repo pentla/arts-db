@@ -3,6 +3,7 @@ use crate::{btree::BTree, buffer_pool_manager::BufferPoolManager, disk::PageId};
 
 use crate::{buffer, tuple};
 
+#[derive(Debug)]
 pub struct SimpleTable {
     pub meta_page_id: PageId,
     pub num_key_elems: usize,

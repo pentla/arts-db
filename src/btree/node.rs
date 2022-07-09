@@ -41,6 +41,7 @@ pub enum Body<B> {
 
 impl<B: ByteSlice> Body<B> {
     pub fn new(node_type: [u8; 8], bytes: B) -> Body<B> {
+        println!("{:?}", node_type);
         match node_type {
             NODE_TYPE_LEAF => Body::Leaf(Leaf::new(bytes)),
             NODE_TYPE_BRANCH => Body::Branch(Branch::new(bytes)),

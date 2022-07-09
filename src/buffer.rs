@@ -14,12 +14,16 @@ pub enum Error {
     NoFreeBuffer,
 }
 
+// u8の型の配列をPAGE_SIXE(4096個)確保する。
 pub type Page = [u8; PAGE_SIZE];
 
 #[derive(Debug)]
 pub struct Buffer {
+    // Disk側のpageID
     pub page_id: PageId,
+    // バッファとしてデータを保存するPAGE_SIZEの大きさの配列
     pub page: RefCell<Page>,
+    // バッファの値が書き換えられており、ディスク上の値が古くなっている状態のこと
     pub is_dirty: Cell<bool>,
 }
 
@@ -38,11 +42,14 @@ pub struct BufferId(pub usize);
 
 #[derive(Default)]
 pub struct Frame {
-    // bufferの使用回数
+    // bufferの使用回数。多いほどクリアされづらくなる
     pub usage_count: u64,
     pub buffer: Rc<Buffer>,
 }
 
+/*
+    ページデータをメモリ上に管理する場所
+*/
 pub struct BufferPool {
     pub buffers: Vec<Frame>,
     pub next_victim_id: BufferId,
@@ -63,6 +70,7 @@ impl BufferPool {
         self.buffers.len()
     }
     /*
+        捨てるバッファを決定し、そのpage_idを返す
         Clock-sweepアルゴリズムを実装する。
         bufferの大きさには限りがあるので、
         再利用しなさそうなBufferを捨てるアルゴリズム

@@ -4,6 +4,10 @@ use std::path::Path;
 
 use zerocopy::{AsBytes, FromBytes};
 
+/*
+    ファイルサイズの単位。
+    Linuxのext4のファイルサイズが4096のため、ページサイズはこの整数倍とされていることが多い。
+*/
 pub const PAGE_SIZE: usize = 4096;
 
 pub struct DiskManager {
@@ -78,5 +82,10 @@ impl DiskManager {
         let offset = PAGE_SIZE as u64 * page_id.to_u64();
         self.heap_file.seek(SeekFrom::Start(offset))?;
         self.heap_file.write_all(data)
+    }
+
+    pub fn sync(&mut self) -> io::Result<()> {
+        self.heap_file.flush()?;
+        self.heap_file.sync_all()
     }
 }
