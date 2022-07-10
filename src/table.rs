@@ -15,18 +15,14 @@ impl SimpleTable {
         self.meta_page_id = btree.meta_page_id;
         Ok(())
     }
-    pub fn insert(
-        &self,
-        bufmgr: &mut BufferPoolManager,
-        record: &[&[u8]],
-    ) -> Result<(), buffer::Error> {
+    pub fn insert(&self, bufmgr: &mut BufferPoolManager, record: &[&[u8]]) -> Result<(), Error> {
         let btree = BTree::new(self.meta_page_id);
         let mut key = vec![];
         tuple::encode(record[..self.num_key_elems].iter(), &mut key);
 
         let mut value = vec![];
         tuple::encode(record[self.num_key_elems..].iter(), &mut value);
-        btree.insert(bufmgr, &key, &value);
+        btree.insert(bufmgr, &key, &value)?;
         Ok(())
     }
 }
