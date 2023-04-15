@@ -48,7 +48,14 @@ pub struct Frame {
 }
 
 /*
-    ページデータをメモリ上に管理する場所
+    ページデータをメモリ上に管理するためのBufferPoolを定義しています。
+    BufferPoolはBufferの集合体で、
+    Bufferはディスク上のページIDとそのページデータを保存する配列、
+    そしてBufferの状態が古くなっているかどうかを示すis_dirtyフラグを持っています。
+
+    BufferPoolには、
+    新しいBufferを追加するためのメソッドと、古いBufferを捨てるためのメソッドが定義されています。
+    古いBufferを捨てるメソッドでは、Clock-sweepアルゴリズムを使用して、再利用しなさそうなBufferを捨てるようにしています。
 */
 pub struct BufferPool {
     pub buffers: Vec<Frame>,
@@ -70,10 +77,13 @@ impl BufferPool {
         self.buffers.len()
     }
     /*
-        捨てるバッファを決定し、そのpage_idを返す
-        Clock-sweepアルゴリズムを実装する。
-        bufferの大きさには限りがあるので、
-        再利用しなさそうなBufferを捨てるアルゴリズム
+        Clock-sweepアルゴリズムは、特定の条件を満たすフレームを置き換えるために使用されます。
+        置き換えるフレームを選択するために、clock-sweepアルゴリズムは単純なカウンタを使用し、
+        バッファプール内のすべてのフレームを周回します。
+        フレームが使用されていない場合、または使用回数が低い場合は、そのフレームを置き換えることができます。
+        使用回数が高いフレームは、しばらく使用され続ける可能性が高いため、置き換えるのが難しいとされます。
+        clock-sweepアルゴリズムは、バッファプールが大きくなるにつれて、
+        時間がかかる傾向があるため、大規模なシステムでは使用しない方が良い場合もあります。
     */
     pub fn evict(&mut self) -> Option<BufferId> {
         let pool_size = self.size();

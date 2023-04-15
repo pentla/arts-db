@@ -6,7 +6,7 @@ use crate::buffer::{Buffer, BufferId, BufferPool, Error, Frame};
 use crate::disk::{DiskManager, PageId, PAGE_SIZE};
 
 /*
-    Diskは遅いので、直接扱わず、メモリで結果を返すようにするための仕組み。
+    バッファプール管理は、ディスクからのページデータの読み書きを効率化するために、データをメモリ上にキャッシュして管理する役割を担っています。
 */
 pub struct BufferPoolManager {
     disk: DiskManager,
@@ -25,7 +25,10 @@ impl BufferPoolManager {
             page_table,
         }
     }
-    // bufferの貸し出し処理をする
+    /*
+        ページIDを指定して、対応するページデータを含むバッファを返します。
+        もしページデータがバッファプールにない場合、ディスクから読み込んでバッファプールに格納します。また、必要に応じて古いバッファをディスクに書き戻します。
+    */
     pub fn fetch_page(&mut self, page_id: PageId) -> Result<Rc<Buffer>, Error> {
         // pageがbuffer_poolにある場合はそのバッファを貸し出す
         if let Some(&buffer_id) = self.page_table.get(&page_id) {
@@ -60,6 +63,9 @@ impl BufferPoolManager {
         Ok(page)
     }
 
+    /*
+        新しいページを作成し、そのページデータを含むバッファを返します。新しいページはディスクから割り当てられ、バッファプールに格納されます。
+    */
     pub fn create_page(&mut self) -> Result<Rc<Buffer>, Error> {
         let buffer_id = self.pool.evict().ok_or(Error::NoFreeBuffer)?;
         let frame = &mut self.pool[buffer_id];
@@ -82,6 +88,8 @@ impl BufferPoolManager {
         self.page_table.insert(page_id, buffer_id);
         Ok(page)
     }
+
+    // バッファプール内のすべてのページデータをディスクに書き戻し、is_dirtyフラグをリセットします。ディスクへの同期も行われます。
 
     pub fn flush(&mut self) -> Result<(), Error> {
         for (&page_id, &buffer_id) in self.page_table.iter() {

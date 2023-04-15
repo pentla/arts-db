@@ -72,11 +72,29 @@ impl DiskManager {
         self.next_page_id += 1;
         PageId(page_id)
     }
+    // 指定されたページIDのページデータを読み込み、バイト配列に書き込みます。
     pub fn read_page_data(&mut self, page_id: PageId, data: &mut [u8]) -> io::Result<()> {
+        //　pageIDが不正な場合はエラーを返す
+        if page_id.to_u64() >= self.next_page_id {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Invalid page ID",
+            ));
+        }
+
+        // データサイズがPAGE_SIZEと一致しない場合はエラーを返す
+        if data.len() != PAGE_SIZE {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Invalid data buffer size",
+            ));
+        }
+
         let offset = PAGE_SIZE as u64 * page_id.to_u64();
         self.heap_file.seek(SeekFrom::Start(offset))?;
         self.heap_file.read_exact(data)
     }
+    // 指定されたページIDの位置にページデータを書き込みます。
     pub fn write_page_data(&mut self, page_id: PageId, data: &[u8]) -> io::Result<()> {
         // offsetを計算
         let offset = PAGE_SIZE as u64 * page_id.to_u64();
