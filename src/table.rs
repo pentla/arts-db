@@ -1,7 +1,5 @@
-use crate::btree::Error;
-use crate::{btree::BTree, buffer_pool_manager::BufferPoolManager, disk::PageId};
-
-use crate::{buffer, tuple};
+use crate::{buffer, buffer_pool_manager::BufferPoolManager, disk::PageId};
+use anyhow::Result;
 
 #[derive(Debug)]
 pub struct SimpleTable {
@@ -10,12 +8,12 @@ pub struct SimpleTable {
 }
 
 impl SimpleTable {
-    pub fn create(&mut self, bufmgr: &mut BufferPoolManager) -> Result<(), Error> {
+    pub fn create(&mut self, bufmgr: &mut BufferPoolManager) -> Result<()> {
         let btree = BTree::create(bufmgr)?;
         self.meta_page_id = btree.meta_page_id;
         Ok(())
     }
-    pub fn insert(&self, bufmgr: &mut BufferPoolManager, record: &[&[u8]]) -> Result<(), Error> {
+    pub fn insert(&self, bufmgr: &mut BufferPoolManager, record: &[&[u8]]) -> Result<()> {
         let btree = BTree::new(self.meta_page_id);
         let mut key = vec![];
         tuple::encode(record[..self.num_key_elems].iter(), &mut key);
