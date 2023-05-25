@@ -1,4 +1,4 @@
-use crate::{buffer_pool_manager::BufferPoolManager, disk::PageId};
+use crate::{buffer::BufferPoolManager, disk::PageId};
 use anyhow::Result;
 
 #[derive(Debug)]

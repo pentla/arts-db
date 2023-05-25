@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 
-use crate::buffer::{Buffer, BufferId, BufferPool, Error, Frame};
+use super::buffer::{Buffer, BufferId, BufferPool, Error, Frame};
 use crate::disk::{DiskManager, PageId};
 
 /*
