@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 
 use crate::buffer::{Buffer, BufferId, BufferPool, Error, Frame};
-use crate::disk::{DiskManager, PageId, PAGE_SIZE};
+use crate::disk::{DiskManager, PageId};
 
 /*
     バッファプール管理は、ディスクからのページデータの読み書きを効率化するために、データをメモリ上にキャッシュして管理する役割を担っています。
@@ -119,6 +119,7 @@ impl IndexMut<BufferId> for BufferPool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::disk::PAGE_SIZE;
     use tempfile::tempfile;
 
     #[test]
